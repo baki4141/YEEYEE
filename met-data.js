@@ -9,8 +9,7 @@
  *   const supabase = window.supabase.createClient(URL, KEY)   // inside a module/IIFE
  * or just change the one line below to point at your client (e.g. `sb`).
  */
-const db = () => supabase;
-
+const db = () => sb;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Throws a readable Error for any Supabase error. */
