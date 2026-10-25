@@ -138,6 +138,7 @@ details.rv[open] summary::after{transform:rotate(90deg)}
 .empty{text-align:center;color:var(--mute);padding:36px 10px}
 .login{display:grid;gap:12px;max-width:380px}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--bad);color:#fff;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:500;z-index:30;max-width:90vw;box-shadow:var(--shm);animation:rise .3s}
+a.icon-btn{text-decoration:none;display:inline-block}
 .hdr-r{display:flex;align-items:center;gap:6px}
 .who{font-size:.8rem;color:var(--mute);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:640px){.who{display:none!important}}
@@ -170,7 +171,7 @@ details.rv[open] summary::after{transform:rotate(90deg)}
 <body>
 <header>
   <div class="brand"><i>M</i><span>MET Practice <small>by DBL</small></span></div>
-  <div class="hdr-r"><span class="who hide" id="who"></span><button class="icon-btn hide" id="progBtn">My progress</button><button class="icon-btn hide" id="signout">Sign out</button><button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode"></button></div>
+  <div class="hdr-r"><span class="who hide" id="who"></span><a class="icon-btn hide" id="adminLink" href="admin.html">Admin</a><button class="icon-btn hide" id="progBtn">My progress</button><button class="icon-btn hide" id="signout">Sign out</button><button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode"></button></div>
 </header>
 <main>
 
@@ -301,7 +302,7 @@ $("#themeBtn").onclick=()=>setTheme(root.dataset.theme==="dark"?"light":"dark",t
 function show(id){["login","setup","quiz","summary","progress"].forEach(s=>$("#"+s).classList.toggle("hide",s!==id));window.scrollTo(0,0)}
 function showLogin(){
   clearInterval(S.tick);S.qs=[];S.ans={};S.res={};S.view=[];S.ending=false;S.busy=false;
-  ["#signout","#who","#progBtn"].forEach(x=>$(x).classList.add("hide"));
+  ["#signout","#who","#progBtn","#adminLink"].forEach(x=>$(x).classList.add("hide"));
   $("#startBtn").disabled=true;
   show("login");
 }
@@ -324,9 +325,13 @@ async function boot(){
     show("setup");
     const banks=await rpc("get_banks");
     if(!banks.length){setStatus("err","No question banks found. Run supabase-setup.sql and add questions.");return}
-    $("#bankSel").innerHTML=banks.map(b=>`<option value="${esc(b.bank)}">${esc(b.bank)} (${b.total} questions)</option>`).join("");
-    $("#bankSel").disabled=false;$("#startBtn").disabled=false;
-    setStatus("ok","Connected. Questions load securely from the server when you start.");
+    $("#bankSel").innerHTML=banks.map(b=>`<option value="${esc(b.bank)}" ${b.has_access?"":"disabled"}>${esc(b.bank)} (${b.total} questions)${b.has_access?"":" 🔒 locked"}</option>`).join("");
+    const first=banks.find(b=>b.has_access);
+    if(!first){$("#bankSel").disabled=true;$("#startBtn").disabled=true;setStatus("err","No question banks are unlocked for your account yet. Ask your administrator for access.");return}
+    $("#bankSel").value=first.bank;$("#bankSel").disabled=false;$("#startBtn").disabled=false;
+    const nLocked=banks.filter(b=>!b.has_access).length;
+    setStatus("ok",nLocked?`Connected. ${nLocked} locked bank${nLocked>1?"s":""} need${nLocked>1?"":"s"} access from your administrator.`:"Connected. Questions load securely from the server when you start.");
+    rpc("is_admin").then(v=>{if(v===true)$("#adminLink").classList.remove("hide")}).catch(()=>{});
   }catch(e){setStatus("err","Could not load question banks: "+(e.message||e))}
 }
 function authMsg(kind,msg){
