@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MET Practice by DBL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#f2f6f6;--card:#fff;--ink:#10242b;--mute:#5b7078;--line:#d9e3e5;--acc:#0b7f86;--acc2:#e3f3f3;--on:#fff;--ok:#18794e;--okbg:#e2f5ea;--bad:#b83a32;--badbg:#fbe9e7;--warn:#a86a00;--warnbg:#fff3d6;--sh:0 1px 2px rgba(16,36,43,.06),0 8px 24px rgba(16,36,43,.06);color-scheme:light}
+:root[data-theme=dark]{--bg:#0c1519;--card:#13222a;--ink:#e6f0f2;--mute:#8fa6ae;--line:#233a44;--acc:#3fc1c9;--acc2:#12343a;--on:#06191c;--ok:#4cc38a;--okbg:#10301f;--bad:#ff7b70;--badbg:#3a1916;--warn:#f0b44c;--warnbg:#33290f;--sh:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;transition:background .3s,color .3s}
+button,input,select{font:inherit;color:inherit}button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px max(16px,calc((100vw - 880px)/2));background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700}
+.brand i{display:grid;place-items:center;width:32px;height:32px;border-radius:8px;background:var(--acc);color:var(--on);font:600 15px "JetBrains Mono",monospace;font-style:normal}
+.brand small{font:400 12px "JetBrains Mono",monospace;color:var(--mute)}
+.icon-btn{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:7px 12px;transition:.2s;margin-left:6px}
+.icon-btn:hover{border-color:var(--acc);color:var(--acc)}
+main{max-width:880px;margin:0 auto;padding:24px 16px 64px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);padding:22px;margin-bottom:18px}
+h1{font-size:clamp(1.5rem,4vw,2rem);letter-spacing:-.02em;margin:0 0 6px}h2{font-size:1.05rem;margin:0 0 12px}
+p.lead{color:var(--mute);margin:0 0 20px}
+.hide{display:none!important}.mono{font-family:"JetBrains Mono",monospace}
+.status{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 14px;border-radius:10px;font-size:.92rem;background:var(--bg)}
+.status.ok{background:var(--okbg);color:var(--ok)}.status.err{background:var(--badbg);color:var(--bad)}
+.status .dot{width:9px;height:9px;border-radius:50%;background:currentColor;flex:none}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.choice{display:block;position:relative;border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;transition:.2s}
+.choice input{position:absolute;opacity:0}.choice b{display:block}.choice span{color:var(--mute);font-size:.88rem}
+.choice:has(input:checked){border-color:var(--acc);background:var(--acc2)}
+.choice:has(input:focus-visible){outline:2px solid var(--acc);outline-offset:2px}
+.field{display:flex;align-items:center;gap:10px;margin-top:12px;color:var(--mute);font-size:.92rem}
+input[type=number],input[type=email],input[type=password],input[type=search],select{padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+input[type=number]{width:84px}
+.btn{border:0;border-radius:10px;padding:11px 20px;font-weight:600;background:var(--acc);color:var(--on);transition:.2s}
+.btn:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
+.btn.big{width:100%;padding:14px;font-size:1.02rem}
+.bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .4s ease}
+.qhead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:.88rem;color:var(--mute)}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font:600 .72rem "JetBrains Mono",monospace;background:var(--acc2);color:var(--acc)}
+.pill.warn{background:var(--warnbg);color:var(--warn)}
+.timer{font:600 1rem "JetBrains Mono",monospace;color:var(--ink)}.timer.low{color:var(--bad)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.tools input{flex:1 1 220px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:5px 14px;font-size:.85rem;transition:.2s}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--on)}
+.stem{font-size:1.12rem;font-weight:500;line-height:1.6;margin:6px 0 18px}
+.theme{background:var(--bg);border-left:3px solid var(--acc);padding:8px 12px;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:.9rem}
+.opts{display:grid;gap:10px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);transition:border-color .2s,background .2s,transform .15s}
+.opt:hover:not(:disabled){border-color:var(--acc);transform:translateX(3px)}.opt:disabled{cursor:default}
+.opt .l{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--bg);font:600 .82rem "JetBrains Mono",monospace}
+.opt.sel{border-color:var(--acc);background:var(--acc2)}.opt.sel .l{background:var(--acc);color:var(--on)}
+.opt.ok{border-color:var(--ok);background:var(--okbg);animation:pulse .5s}.opt.ok .l{background:var(--ok);color:#fff}
+.opt.bad{border-color:var(--bad);background:var(--badbg);animation:shake .4s}.opt.bad .l{background:var(--bad);color:#fff}
+@keyframes pulse{50%{transform:scale(1.015)}}@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.expl{margin-top:16px;padding:14px 16px;border-radius:12px;background:var(--bg);border:1px solid var(--line);animation:rise .35s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+.expl h3{margin:0 0 4px;font-size:.95rem}.expl.ok h3{color:var(--ok)}.expl.bad h3{color:var(--bad)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:20px;flex-wrap:wrap}.nav .r{display:flex;gap:10px}
+.dots{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.dot{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--card);font:.75rem "JetBrains Mono",monospace;position:relative}
+.dot.a{background:var(--acc2);border-color:var(--acc)}.dot.s{border-style:dashed;color:var(--warn);border-color:var(--warn)}
+.dot.c{outline:2px solid var(--acc);outline-offset:1px;font-weight:700}
+.dot.b::after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:var(--warn)}
+.star{background:none;border:0;font-size:1.4rem;line-height:1;color:var(--mute);padding:0 4px}.star.on{color:var(--warn)}
+.ringwrap{display:flex;align-items:center;gap:28px;flex-wrap:wrap;justify-content:center}
+.ring{position:relative;width:150px;height:150px}.ring svg{transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:11;stroke-linecap:round}.ring .t{stroke:var(--line)}
+.ring .v{stroke:var(--acc);stroke-dasharray:327;stroke-dashoffset:327;transition:stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)}
+.ring div{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring b{font:600 2rem "JetBrains Mono",monospace;line-height:1}.ring span{font-size:.78rem;color:var(--mute)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;flex:1 1 300px}
+.stat{padding:14px;border-radius:12px;text-align:center;opacity:0;animation:pop .5s cubic-bezier(.3,1.5,.5,1) forwards}
+.stat:nth-child(2){animation-delay:.12s}.stat:nth-child(3){animation-delay:.24s}
+@keyframes pop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+.stat b{display:block;font:600 1.7rem "JetBrains Mono",monospace}.stat span{font-size:.82rem}
+.stat.c{background:var(--okbg);color:var(--ok)}.stat.i{background:var(--badbg);color:var(--bad)}.stat.k{background:var(--warnbg);color:var(--warn)}
+.dist{display:flex;height:14px;border-radius:99px;overflow:hidden;margin-top:22px;background:var(--line)}.dist i{display:block;width:0;transition:width 1s ease .3s}
+details.rv{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--card)}
+details.rv summary{cursor:pointer;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;list-style:none}
+details.rv summary::-webkit-details-marker{display:none}
+.rv .m{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:.8rem;color:#fff;font-weight:700}
+.m.c{background:var(--ok)}.m.i{background:var(--bad)}.m.k{background:var(--warn)}
+.rv .body{padding:0 14px 14px 48px;font-size:.92rem}.rv .body p{margin:4px 0}
+.empty{text-align:center;color:var(--mute);padding:30px 10px}
+.login{display:grid;gap:10px;max-width:360px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--bad);color:#fff;padding:10px 16px;border-radius:10px;font-size:.9rem;z-index:20;max-width:90vw}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><i>M</i><span>MET Practice <small>by DBL</small></span></div>
+  <div><button class="icon-btn hide" id="signout">Sign out</button><button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode"></button></div>
+</header>
+<main>
+
+<section id="login" class="hide">
+  <div class="card">
+    <h1>Sign in</h1><p class="lead">Your question bank is available to registered users only.</p>
+    <div class="login">
+      <input type="email" id="email" placeholder="Email" autocomplete="username" aria-label="Email">
+      <input type="password" id="pass" placeholder="Password" autocomplete="current-password" aria-label="Password">
+      <button class="btn" id="loginBtn">Sign in</button>
+    </div>
+    <div id="loginErr" class="status err hide"></div>
+  </div>
+</section>
+
+<section id="setup" class="hide">
+  <div class="card">
+    <h1>Set up your session</h1>
+    <p class="lead">Choose a question bank, then choose how you want to be tested.</p>
+    <h2>1. Question bank</h2>
+    <select id="bankSel" aria-label="Question bank" disabled><option>Loading…</option></select>
+    <div id="status" class="status"><span class="dot"></span><span>Connecting…</span></div>
+  </div>
+  <div class="card">
+    <h2>2. Mode</h2>
+    <div class="grid2">
+      <label class="choice"><input type="radio" name="mode" value="study" checked><b>Study mode</b><span>Instant feedback and explanation after each answer</span></label>
+      <label class="choice"><input type="radio" name="mode" value="exam"><b>Exam mode</b><span>Answer silently, review everything at the end</span></label>
+    </div>
+  </div>
+  <div class="card">
+    <h2>3. Timer</h2>
+    <div class="grid2">
+      <label class="choice"><input type="radio" name="timer" value="none" checked><b>No timer</b><span>Work at your own pace</span></label>
+      <label class="choice"><input type="radio" name="timer" value="global"><b>Global timer</b><span>One countdown for the session</span></label>
+      <label class="choice"><input type="radio" name="timer" value="per"><b>Per question</b><span>Countdown resets on every card</span></label>
+    </div>
+    <div class="field hide" id="gField">Total minutes <input type="number" id="gMin" min="1" max="600" value="30"></div>
+    <div class="field hide" id="pField">Seconds per question <input type="number" id="pSec" min="5" max="600" value="90"></div>
+  </div>
+  <button class="btn big" id="startBtn" disabled>Start session</button>
+</section>
+
+<section id="quiz" class="hide">
+  <div class="tools"><input type="search" id="search" placeholder="Search questions, themes or options" aria-label="Search questions"></div>
+  <div class="chips" id="filters">
+    <button class="chip on" data-f="all">All</button><button class="chip" data-f="bm">Bookmarked</button>
+    <button class="chip" data-f="un">Unanswered</button><button class="chip" data-f="sk">Skipped</button>
+  </div>
+  <div class="card">
+    <div class="bar"><i id="prog"></i></div>
+    <div class="qhead"><span id="counter" class="mono"></span><span class="timer" id="timer"></span></div>
+    <div id="qbody"></div>
+    <div class="nav">
+      <button class="btn ghost" id="prev">Previous</button>
+      <div class="r"><button class="btn ghost" id="finish">Finish quiz</button><button class="btn" id="next">Next</button></div>
+    </div>
+    <div class="dots" id="dots"></div>
+  </div>
+</section>
+
+<section id="summary" class="hide">
+  <div class="card">
+    <h1>Session results</h1><p class="lead" id="sumLead"></p>
+    <div class="ringwrap">
+      <div class="ring"><svg viewBox="0 0 120 120" width="150" height="150"><circle class="t" cx="60" cy="60" r="52"/><circle class="v" id="ringV" cx="60" cy="60" r="52"/></svg><div><b id="pct">0%</b><span>score</span></div></div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="dist" id="dist" role="img" aria-label="Score distribution"></div>
+    <div class="nav" style="margin-top:20px"><button class="btn ghost" id="retry">Retry incorrect and skipped</button><button class="btn" id="again">New session</button></div>
+  </div>
+  <div class="card"><h2>Review</h2><div class="chips" id="chips"></div><div id="rvList"></div></div>
+</section>
+</main>
+<div id="toast" class="hide" role="alert"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================================================================
+   1. SUPABASE CONFIG: paste your own values here.
+   Find them in Supabase > Project Settings > API.
+   - SUPABASE_URL      : the "Project URL"
+   - SUPABASE_ANON_KEY : the "anon public" key (safe in the browser ONLY
+                         because the table is locked by supabase-setup.sql;
+                         never paste the service_role key here)
+   - REQUIRE_LOGIN     : true shows a sign-in screen (Supabase Auth, email +
+                         password). Pair it with granting the functions to
+                         "authenticated" only, as described in the SQL file.
+   ================================================================ */
+const SUPABASE_URL      = "https://YOUR-PROJECT-ID.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+const REQUIRE_LOGIN     = false;
+
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const S={qs:[],ans:{},res:{},bm:new Set(),seen:new Set(),view:[],pos:0,mode:"study",timer:"none",gLeft:0,pLeft:0,gTotal:0,pTotal:0,tick:null,busy:false,ending:false,f:"all",rv:"all"};
+
+/* ---------- Supabase client + secure calls ---------- */
+const configured=!/YOUR-/.test(SUPABASE_URL+SUPABASE_ANON_KEY);
+const sb=configured&&window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
+async function rpc(fn,args){const{data,error}=await sb.rpc(fn,args||{});if(error)throw error;return data}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.remove("hide");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add("hide"),4500)}
+function setStatus(kind,msg){const s=$("#status");s.className="status "+kind;s.innerHTML=`<span class="dot"></span><span>${esc(msg)}</span>`}
+
+/* ---------- Theme ---------- */
+const root=document.documentElement;
+function setTheme(t,save){root.dataset.theme=t;$("#themeBtn").textContent=t==="dark"?"☀ Light":"☾ Dark";if(save){try{localStorage.setItem("dbl-theme",t)}catch(e){}}}
+let saved=null;try{saved=localStorage.getItem("dbl-theme")}catch(e){}
+setTheme(saved||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"),false);
+$("#themeBtn").onclick=()=>setTheme(root.dataset.theme==="dark"?"light":"dark",true);
+
+/* ---------- Boot, auth, banks ---------- */
+function show(id){["login","setup","quiz","summary"].forEach(s=>$("#"+s).classList.toggle("hide",s!==id));window.scrollTo(0,0)}
+async function boot(){
+  show("setup");
+  if(!sb){setStatus("err","Supabase is not configured. Add your project URL and anon key at the top of the script.");return}
+  try{
+    if(REQUIRE_LOGIN){
+      const{data}=await sb.auth.getSession();
+      if(!data.session){show("login");return}
+      $("#signout").classList.remove("hide");
+    }
+    const banks=await rpc("get_banks");
+    if(!banks.length){setStatus("err","No question banks found. Run supabase-setup.sql and add questions.");return}
+    $("#bankSel").innerHTML=banks.map(b=>`<option value="${esc(b.bank)}">${esc(b.bank)} (${b.total} questions)</option>`).join("");
+    $("#bankSel").disabled=false;$("#startBtn").disabled=false;
+    setStatus("ok","Connected. Questions load securely from the server when you start.");
+  }catch(e){setStatus("err","Could not load question banks: "+(e.message||e))}
+}
+$("#loginBtn").onclick=async()=>{
+  const{error}=await sb.auth.signInWithPassword({email:$("#email").value.trim(),password:$("#pass").value});
+  const el=$("#loginErr");
+  if(error){el.textContent=error.message;el.classList.remove("hide")}else{el.classList.add("hide");boot()}
+};
+$("#signout").onclick=async()=>{await sb.auth.signOut();$("#signout").classList.add("hide");show("login")};
+$$("input[name=timer]").forEach(r=>r.onchange=()=>{const v=$("input[name=timer]:checked").value;$("#gField").classList.toggle("hide",v!=="global");$("#pField").classList.toggle("hide",v!=="per")});
+
+/* ---------- Session ---------- */
+$("#startBtn").onclick=async()=>{
+  const b=$("#startBtn");b.disabled=true;b.textContent="Loading questions…";
+  try{
+    const qs=await rpc("get_questions",{p_bank:$("#bankSel").value});
+    if(!qs.length)throw new Error("This bank has no questions.");
+    begin(qs);
+  }catch(e){toast("Could not load questions: "+(e.message||e))}
+  b.disabled=false;b.textContent="Start session";
+};
+function begin(list){
+  S.qs=list.slice();S.ans={};S.res={};S.bm=new Set();S.seen=new Set();S.pos=0;S.busy=false;S.ending=false;S.f="all";
+  S.mode=$("input[name=mode]:checked").value;S.timer=$("input[name=timer]:checked").value;
+  S.gTotal=Math.max(1,+$("#gMin").value||30)*60;S.gLeft=S.gTotal;S.pTotal=Math.max(5,+$("#pSec").value||90);S.pLeft=S.pTotal;
+  $("#search").value="";applyFilter();show("quiz");
+  clearInterval(S.tick);if(S.timer!=="none")S.tick=setInterval(onTick,1000);
+  render();
+}
+const skipped=i=>S.seen.has(i)&&S.ans[i]==null;
+function applyFilter(keep){
+  const t=$("#search").value.trim().toLowerCase(),f=S.f;
+  S.view=S.qs.map((q,i)=>i).filter(i=>{
+    const q=S.qs[i];
+    if(t&&!(q.stem+" "+(q.theme||"")+" "+q.options.map(o=>o.t).join(" ")).toLowerCase().includes(t))return false;
+    return f==="bm"?S.bm.has(i):f==="un"?S.ans[i]==null:f==="sk"?skipped(i):true;
+  });
+  const p=keep==null?-1:S.view.indexOf(keep);S.pos=p>=0?p:0;
+}
+function setFilter(){$$("#filters .chip").forEach(c=>c.classList.toggle("on",c.dataset.f===S.f));applyFilter();S.pLeft=S.pTotal;render()}
+$("#search").oninput=setFilter;
+$("#filters").addEventListener("click",e=>{const c=e.target.closest(".chip");if(c){S.f=c.dataset.f;setFilter()}});
+const curIdx=()=>S.view[S.pos];
+const fmt=s=>{s=Math.max(0,s);return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")};
+function go(p){const i=curIdx();if(i!=null&&S.ans[i]==null)S.seen.add(i);S.pos=Math.min(Math.max(p,0),S.view.length-1);S.pLeft=S.pTotal;render()}
+function onTick(){
+  if(S.timer==="global"){S.gLeft--;if(S.gLeft<=0){drawTimer();finish(true);return}}
+  else{const i=curIdx();if(i!=null&&(S.ans[i]==null||S.mode==="exam")){S.pLeft--;if(S.pLeft<=0){if(S.pos>=S.view.length-1){finish(true);return}go(S.pos+1);return}}}
+  drawTimer();
+}
+function drawTimer(){
+  const el=$("#timer");if(S.timer==="none"){el.textContent="";return}
+  const v=S.timer==="global"?S.gLeft:S.pLeft;
+  el.textContent=(S.timer==="global"?"Total ":"Question ")+fmt(v);el.classList.toggle("low",v<=(S.timer==="global"?60:10));
+}
+
+/* ---------- Quiz rendering ---------- */
+function render(){
+  drawTimer();
+  const body=$("#qbody"),done=Object.keys(S.ans).length,sk=S.qs.filter((q,i)=>skipped(i)).length;
+  $("#prog").style.width=(done/S.qs.length*100)+"%";
+  if(!S.view.length){
+    body.innerHTML='<div class="empty">No questions match this search or filter.</div>';
+    $("#counter").textContent=`0 of ${S.qs.length}`;$("#prev").disabled=$("#next").disabled=true;$("#dots").innerHTML="";return;
+  }
+  const i=curIdx(),q=S.qs[i],a=S.ans[i],r=S.res[i],reveal=S.mode==="study"&&!!r;
+  $("#counter").textContent=`Question ${S.pos+1} of ${S.view.length}  ·  ${done} answered  ·  ${sk} skipped`;
+  const opts=q.options.map(o=>{
+    let c="opt";
+    if(reveal){if(o.l===r.answer)c+=" ok";else if(o.l===a)c+=" bad"}else if(a===o.l)c+=" sel";
+    return `<button class="${c}" data-l="${esc(o.l)}" ${S.mode==="study"&&a!=null?"disabled":""}><span class="l">${esc(o.l)}</span><span>${esc(o.t)}</span></button>`}).join("");
+  let ex="";
+  if(S.mode==="study"&&a!=null&&!r)ex='<div class="expl"><h3>Checking answer…</h3></div>';
+  if(reveal){
+    const tags=(r.tags||"").split("|").map(t=>t.trim()).filter(Boolean);
+    ex=`<div class="expl ${r.correct?"ok":"bad"}"><h3>${r.correct?"Correct":"Incorrect. The answer is "+esc(r.answer)}</h3><div>${r.explanation?esc(r.explanation):"No explanation provided."}</div>${tags.length?`<div class="tags">${tags.map(t=>`<span class="pill warn">${esc(t)}</span>`).join("")}</div>`:""}</div>`;
+  }
+  body.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px"><span class="pill">${esc(q.type)}</span><button class="star ${S.bm.has(i)?"on":""}" id="bmBtn" aria-label="Bookmark question" aria-pressed="${S.bm.has(i)}">${S.bm.has(i)?"★":"☆"}</button></div>
+  ${q.theme?`<div class="theme"><b>Theme:</b> ${esc(q.theme)}. Choose the best option for the case below.</div>`:""}
+  <p class="stem">${esc(q.stem)}</p><div class="opts">${opts}</div>${ex}`;
+  $("#prev").disabled=S.pos===0;$("#next").disabled=S.pos>=S.view.length-1;
+  $("#dots").innerHTML=S.view.map((qi,p)=>`<button class="dot ${S.ans[qi]!=null?"a":skipped(qi)?"s":""} ${p===S.pos?"c":""} ${S.bm.has(qi)?"b":""}" data-p="${p}" aria-label="Go to question ${p+1}">${qi+1}</button>`).join("");
+}
+$("#qbody").addEventListener("click",e=>{
+  if(e.target.closest("#bmBtn")){const i=curIdx();S.bm.has(i)?S.bm.delete(i):S.bm.add(i);if(S.f==="bm")applyFilter(i);render();return}
+  const b=e.target.closest(".opt");if(b&&!b.disabled)choose(b.dataset.l);
+});
+async function choose(l){
+  const i=curIdx();if(i==null||S.busy)return;
+  if(S.mode==="study"&&S.ans[i]!=null)return;
+  S.ans[i]=l;S.seen.add(i);
+  if(S.mode==="study"){
+    S.busy=true;render();
+    try{const rows=await rpc("check_answer",{p_id:S.qs[i].id,p_choice:l});if(!rows||!rows[0])throw new Error("Question not found.");S.res[i]=rows[0]}
+    catch(e){delete S.ans[i];toast("Could not check answer: "+(e.message||e))}
+    S.busy=false;
+  }
+  render();
+}
+$("#dots").addEventListener("click",e=>{const d=e.target.closest(".dot");if(d)go(+d.dataset.p)});
+$("#prev").onclick=()=>go(S.pos-1);$("#next").onclick=()=>go(S.pos+1);
+$("#finish").onclick=()=>{const left=S.qs.length-Object.keys(S.ans).length;if(!left||confirm(`${left} question${left>1?"s are":" is"} unanswered and will count as skipped. Finish now?`))finish(false)};
+document.addEventListener("keydown",e=>{
+  if($("#quiz").classList.contains("hide")||/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key==="ArrowRight"&&!$("#next").disabled)go(S.pos+1);
+  else if(e.key==="ArrowLeft"&&!$("#prev").disabled)go(S.pos-1);
+  else if(/^[a-j]$/i.test(e.key)){const q=S.qs[curIdx()],L=e.key.toUpperCase();if(q&&q.options.some(o=>o.l===L))choose(L)}
+});
+
+/* ---------- Summary (server-side grading) ---------- */
+async function finish(timeUp){
+  if(S.ending||S.busy)return;S.ending=true;clearInterval(S.tick);
+  S.qs.forEach((q,i)=>{if(S.ans[i]==null)S.seen.add(i)});
+  $("#finish").disabled=true;$("#finish").textContent="Grading…";
+  try{
+    const payload={};S.qs.forEach((q,i)=>payload[q.id]=S.ans[i]||null);
+    const rows=await rpc("grade_answers",{p_answers:payload}),m={};
+    rows.forEach(r=>m[r.id]=r);S.qs.forEach((q,i)=>{if(!m[q.id])throw new Error("Missing result.");S.res[i]=m[q.id]});
+  }catch(e){
+    toast("Could not grade your answers: "+(e.message||e));S.ending=false;
+    $("#finish").disabled=false;$("#finish").textContent="Finish quiz";
+    if(S.timer!=="none")S.tick=setInterval(onTick,1000);return;
+  }
+  $("#finish").disabled=false;$("#finish").textContent="Finish quiz";
+  const n=S.qs.length;let c=0,w=0;
+  S.qs.forEach((q,i)=>{if(S.ans[i]!=null){S.res[i].correct?c++:w++}});
+  const k=n-c-w,pct=Math.round(c/n*100);
+  $("#sumLead").textContent=(timeUp?"Time is up. ":"")+`You answered ${c} of ${n} questions correctly in ${S.mode} mode.`;
+  show("summary");
+  $("#pct").textContent="0%";$("#ringV").style.strokeDashoffset=327;
+  $("#stats").innerHTML=`<div class="stat c"><b>${c}</b><span>Correct</span></div><div class="stat i"><b>${w}</b><span>Incorrect</span></div><div class="stat k"><b>${k}</b><span>Skipped</span></div>`;
+  $("#dist").innerHTML=[["ok",c],["bad",w],["warn",k]].map(([v,x])=>`<i style="background:var(--${v})" data-w="${x/n*100}"></i>`).join("");
+  setTimeout(()=>{
+    $("#ringV").style.strokeDashoffset=327*(1-c/n);$$("#dist i").forEach(x=>x.style.width=x.dataset.w+"%");
+    let v=0;const step=()=>{v=Math.min(pct,v+Math.max(1,Math.ceil(pct/30)));$("#pct").textContent=v+"%";if(v<pct)requestAnimationFrame(step)};step();
+  },60);
+  $("#retry").disabled=!(w+k);S.rv="all";drawReview();
+}
+const status=i=>S.ans[i]==null?"k":S.res[i].correct?"c":"i";
+function drawReview(){
+  const F=[["all","All"],["i","Incorrect"],["k","Skipped"],["c","Correct"],["bm","Bookmarked"]];
+  $("#chips").innerHTML=F.map(([k,l])=>`<button class="chip ${S.rv===k?"on":""}" data-f="${k}">${l}</button>`).join("");
+  const list=S.qs.map((q,i)=>i).filter(i=>S.rv==="all"||(S.rv==="bm"?S.bm.has(i):status(i)===S.rv));
+  $("#rvList").innerHTML=list.length?list.map(i=>{
+    const q=S.qs[i],r=S.res[i],st=status(i),mine=q.options.find(o=>o.l===S.ans[i]),right=q.options.find(o=>o.l===r.answer);
+    const tags=(r.tags||"").split("|").map(t=>t.trim()).filter(Boolean);
+    return `<details class="rv"><summary><span class="m ${st}">${st==="c"?"✓":st==="i"?"✕":"–"}</span><span><b class="mono">${i+1}.</b> ${esc(q.stem)}${S.bm.has(i)?" ★":""}</span></summary><div class="body">
+    ${q.theme?`<p><b>Theme:</b> ${esc(q.theme)}</p>`:""}
+    <p><b>Your answer:</b> ${mine?esc(mine.l+". "+mine.t):"Not answered"}</p>
+    <p><b>Correct answer:</b> ${right?esc(right.l+". "+right.t):esc(r.answer)}</p>
+    <p>${esc(r.explanation||"")}</p>${tags.length?`<div class="tags">${tags.map(t=>`<span class="pill warn">${esc(t)}</span>`).join("")}</div>`:""}</div></details>`}).join(""):'<div class="empty">Nothing to show for this filter.</div>';
+}
+$("#chips").addEventListener("click",e=>{const c=e.target.closest(".chip");if(c){S.rv=c.dataset.f;drawReview()}});
+$("#again").onclick=()=>show("setup");
+$("#retry").onclick=()=>{const list=S.qs.filter((q,i)=>status(i)!=="c");if(list.length)begin(list)};
+
+boot();
+})();
+</script>
+</body>
+</html>
