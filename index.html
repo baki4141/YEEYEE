@@ -138,25 +138,37 @@ details.rv[open] summary::after{transform:rotate(90deg)}
 .empty{text-align:center;color:var(--mute);padding:36px 10px}
 .login{display:grid;gap:12px;max-width:380px}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--bad);color:#fff;padding:12px 18px;border-radius:12px;font-size:.9rem;font-weight:500;z-index:30;max-width:90vw;box-shadow:var(--shm);animation:rise .3s}
+.hdr-r{display:flex;align-items:center;gap:6px}
+.who{font-size:.8rem;color:var(--mute);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:640px){.who{display:none!important}}
+.authcard{max-width:430px;margin:5vh auto 0;text-align:center;padding:34px 30px}
+.authcard .brandmark{display:grid;place-items:center;width:52px;height:52px;margin:0 auto 18px;border-radius:15px;background:linear-gradient(135deg,#14B8A6,#0D9488 60%,#047857);color:#fff;font:700 22px "JetBrains Mono",monospace;box-shadow:0 8px 20px -4px rgba(13,148,136,.5)}
+.authcard .lead{margin-bottom:22px}
+.authcard .status{margin:0 0 18px;text-align:left}
+.authcard .login{max-width:none;text-align:left}
+.authcard label{display:grid;gap:6px;font-size:.82rem;font-weight:600;color:var(--mute)}
+.authbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <header>
   <div class="brand"><i>M</i><span>MET Practice <small>by DBL</small></span></div>
-  <div><button class="icon-btn hide" id="signout">Sign out</button><button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode"></button></div>
+  <div class="hdr-r"><span class="who hide" id="who"></span><button class="icon-btn hide" id="signout">Sign out</button><button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode"></button></div>
 </header>
 <main>
 
 <section id="login" class="hide">
-  <div class="card">
-    <h1>Sign in</h1><p class="lead">Your question bank is available to registered users only.</p>
+  <div class="card authcard">
+    <div class="brandmark">M</div>
+    <h1>Welcome to MET Practice</h1>
+    <p class="lead">Sign in or create an account to access your question banks.</p>
+    <div id="authMsg" class="status hide" role="status" aria-live="polite"></div>
     <div class="login">
-      <input type="email" id="email" placeholder="Email" autocomplete="username" aria-label="Email">
-      <input type="password" id="pass" placeholder="Password" autocomplete="current-password" aria-label="Password">
-      <button class="btn" id="loginBtn">Sign in</button>
+      <label>Email<input type="email" id="email" placeholder="you@example.com" autocomplete="username"></label>
+      <label>Password<input type="password" id="pass" placeholder="At least 6 characters" autocomplete="current-password"></label>
+      <div class="authbtns"><button class="btn" id="loginBtn">Sign in</button><button class="btn ghost" id="signupBtn">Sign up</button></div>
     </div>
-    <div id="loginErr" class="status err hide"></div>
   </div>
 </section>
 
@@ -240,7 +252,7 @@ details.rv[open] summary::after{transform:rotate(90deg)}
    ================================================================ */
 const SUPABASE_URL      = "https://viclgrxrpequppmsyeii.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8kqlnr_c39iOM6SDp9nYTQ_kPj9mexm";
-const REQUIRE_LOGIN     = false;
+const REQUIRE_LOGIN     = true;
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -262,15 +274,22 @@ $("#themeBtn").onclick=()=>setTheme(root.dataset.theme==="dark"?"light":"dark",t
 
 /* ---------- Boot, auth, banks ---------- */
 function show(id){["login","setup","quiz","summary"].forEach(s=>$("#"+s).classList.toggle("hide",s!==id));window.scrollTo(0,0)}
+function showLogin(){
+  clearInterval(S.tick);S.qs=[];S.ans={};S.res={};S.view=[];S.ending=false;S.busy=false;
+  ["#signout","#who"].forEach(x=>$(x).classList.add("hide"));
+  $("#startBtn").disabled=true;
+  show("login");
+}
 async function boot(){
-  show("setup");
-  if(!sb){setStatus("err","Supabase is not configured. Add your project URL and anon key at the top of the script.");return}
+  if(!sb){show("setup");setStatus("err","Supabase is not configured. Add your project URL and anon key at the top of the script.");return}
   try{
     if(REQUIRE_LOGIN){
       const{data}=await sb.auth.getSession();
-      if(!data.session){show("login");return}
+      if(!data.session){showLogin();return}
       $("#signout").classList.remove("hide");
+      $("#who").textContent=data.session.user.email||"";$("#who").classList.remove("hide");
     }
+    show("setup");
     const banks=await rpc("get_banks");
     if(!banks.length){setStatus("err","No question banks found. Run supabase-setup.sql and add questions.");return}
     $("#bankSel").innerHTML=banks.map(b=>`<option value="${esc(b.bank)}">${esc(b.bank)} (${b.total} questions)</option>`).join("");
@@ -278,12 +297,31 @@ async function boot(){
     setStatus("ok","Connected. Questions load securely from the server when you start.");
   }catch(e){setStatus("err","Could not load question banks: "+(e.message||e))}
 }
-$("#loginBtn").onclick=async()=>{
-  const{error}=await sb.auth.signInWithPassword({email:$("#email").value.trim(),password:$("#pass").value});
-  const el=$("#loginErr");
-  if(error){el.textContent=error.message;el.classList.remove("hide")}else{el.classList.add("hide");boot()}
-};
-$("#signout").onclick=async()=>{await sb.auth.signOut();$("#signout").classList.add("hide");show("login")};
+function authMsg(kind,msg){
+  const el=$("#authMsg");
+  if(!msg){el.className="status hide";el.innerHTML="";return}
+  el.className="status "+kind;el.innerHTML=`<span class="dot"></span><span>${esc(msg)}</span>`;
+}
+async function doAuth(kind){
+  if(!sb){authMsg("err","Supabase is not configured.");return}
+  const email=$("#email").value.trim(),password=$("#pass").value;
+  if(!email||!password){authMsg("err","Enter your email and password.");return}
+  if(kind==="up"&&password.length<6){authMsg("err","Password must be at least 6 characters.");return}
+  $("#loginBtn").disabled=$("#signupBtn").disabled=true;authMsg("","");
+  try{
+    const{data,error}=kind==="in"?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password});
+    if(error)throw error;
+    if(data.session){$("#pass").value="";boot()}
+    else authMsg("ok","Account created. Check your email to confirm your address, then sign in.");
+  }catch(e){authMsg("err",e.message||"Authentication failed.")}
+  $("#loginBtn").disabled=$("#signupBtn").disabled=false;
+}
+$("#loginBtn").onclick=()=>doAuth("in");
+$("#signupBtn").onclick=()=>doAuth("up");
+["#email","#pass"].forEach(x=>$(x).addEventListener("keydown",e=>{if(e.key==="Enter")doAuth("in")}));
+["#email","#pass"].forEach(x=>$(x).addEventListener("input",()=>authMsg("","")));
+$("#signout").onclick=async()=>{try{await sb.auth.signOut()}catch(e){}showLogin()};
+if(sb)sb.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT")showLogin()});
 $$("input[name=timer]").forEach(r=>r.onchange=()=>{const v=$("input[name=timer]:checked").value;$("#gField").classList.toggle("hide",v!=="global");$("#pField").classList.toggle("hide",v!=="per")});
 
 /* ---------- Session ---------- */
