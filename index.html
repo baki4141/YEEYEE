@@ -148,13 +148,29 @@ details.rv[open] summary::after{transform:rotate(90deg)}
 .authcard .login{max-width:none;text-align:left}
 .authcard label{display:grid;gap:6px;font-size:.82rem;font-weight:600;color:var(--mute)}
 .authbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.ptiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px}
+.tile{padding:14px 10px;border:1px solid var(--line);border-radius:14px;background:var(--bg);text-align:center}
+.tile b{display:block;font:600 1.5rem "JetBrains Mono",monospace;line-height:1.25}
+.tile span{font-size:.7rem;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.pc{width:100%;height:auto;display:block;margin-bottom:22px}
+.pc text{fill:var(--mute);font:10px "JetBrains Mono",monospace}
+.pc .g{stroke:var(--line);stroke-dasharray:3 4}
+.pc .ln{fill:none;stroke:var(--acc);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.pc circle{fill:var(--card);stroke:var(--acc);stroke-width:2.5}
+.brow{margin-bottom:16px}
+.brow .top{display:flex;justify-content:space-between;gap:10px;font-size:.92rem;margin-bottom:6px;font-weight:500}
+.brow small{color:var(--mute);font-weight:400}
+.prow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-size:.92rem}
+.prow small{display:block;color:var(--mute)}
+.prow b{font:600 .92rem "JetBrains Mono",monospace;white-space:nowrap}
+@media(max-width:520px){.icon-btn{padding:6px 9px;font-size:.78rem;margin-left:0}.brand small{display:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <header>
   <div class="brand"><i>M</i><span>MET Practice <small>by DBL</small></span></div>
-  <div class="hdr-r"><span class="who hide" id="who"></span><button class="icon-btn hide" id="signout">Sign out</button><button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode"></button></div>
+  <div class="hdr-r"><span class="who hide" id="who"></span><button class="icon-btn hide" id="progBtn">My progress</button><button class="icon-btn hide" id="signout">Sign out</button><button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode"></button></div>
 </header>
 <main>
 
@@ -168,6 +184,7 @@ details.rv[open] summary::after{transform:rotate(90deg)}
       <label>Email<input type="email" id="email" placeholder="you@example.com" autocomplete="username"></label>
       <label>Password<input type="password" id="pass" placeholder="At least 6 characters" autocomplete="current-password"></label>
       <div class="authbtns"><button class="btn" id="loginBtn">Sign in</button><button class="btn ghost" id="signupBtn">Sign up</button></div>
+      <button class="btn ghost hide" id="resendBtn">Resend confirmation email</button>
     </div>
   </div>
 </section>
@@ -220,9 +237,17 @@ details.rv[open] summary::after{transform:rotate(90deg)}
   </div>
 </section>
 
+<section id="progress" class="hide">
+  <div class="card">
+    <div class="nav" style="margin:0 0 18px;padding:0;border:0"><h1 style="margin:0">My progress</h1><button class="btn ghost" id="progBack">Back</button></div>
+    <div id="progBody"></div>
+  </div>
+</section>
+
 <section id="summary" class="hide">
   <div class="card">
     <h1>Session results</h1><p class="lead" id="sumLead"></p>
+    <div id="saveNote" class="status hide" role="status" style="margin:0 0 18px"></div>
     <div class="ringwrap">
       <div class="ring"><svg viewBox="0 0 120 120" width="150" height="150"><circle class="t" cx="60" cy="60" r="52"/><circle class="v" id="ringV" cx="60" cy="60" r="52"/></svg><div><b id="pct">0%</b><span>score</span></div></div>
       <div class="stats" id="stats"></div>
@@ -273,20 +298,27 @@ setTheme(saved||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light
 $("#themeBtn").onclick=()=>setTheme(root.dataset.theme==="dark"?"light":"dark",true);
 
 /* ---------- Boot, auth, banks ---------- */
-function show(id){["login","setup","quiz","summary"].forEach(s=>$("#"+s).classList.toggle("hide",s!==id));window.scrollTo(0,0)}
+function show(id){["login","setup","quiz","summary","progress"].forEach(s=>$("#"+s).classList.toggle("hide",s!==id));window.scrollTo(0,0)}
 function showLogin(){
   clearInterval(S.tick);S.qs=[];S.ans={};S.res={};S.view=[];S.ending=false;S.busy=false;
-  ["#signout","#who"].forEach(x=>$(x).classList.add("hide"));
+  ["#signout","#who","#progBtn"].forEach(x=>$(x).classList.add("hide"));
   $("#startBtn").disabled=true;
   show("login");
 }
+function hashError(){
+  const h=new URLSearchParams(location.hash.replace(/^#/,"")),d=h.get("error_description");
+  if(!d)return null;
+  history.replaceState(null,"",location.pathname+location.search);
+  return h.get("error_code")==="otp_expired"?"That confirmation link has expired or was already used. Sign in below. If it says your email isn’t confirmed, resend the link.":d;
+}
 async function boot(){
+  const linkErr=hashError();
   if(!sb){show("setup");setStatus("err","Supabase is not configured. Add your project URL and anon key at the top of the script.");return}
   try{
     if(REQUIRE_LOGIN){
       const{data}=await sb.auth.getSession();
-      if(!data.session){showLogin();return}
-      $("#signout").classList.remove("hide");
+      if(!data.session){showLogin();if(linkErr){authMsg("err",linkErr);$("#resendBtn").classList.remove("hide")}return}
+      $("#signout").classList.remove("hide");$("#progBtn").classList.remove("hide");
       $("#who").textContent=data.session.user.email||"";$("#who").classList.remove("hide");
     }
     show("setup");
@@ -309,15 +341,28 @@ async function doAuth(kind){
   if(kind==="up"&&password.length<6){authMsg("err","Password must be at least 6 characters.");return}
   $("#loginBtn").disabled=$("#signupBtn").disabled=true;authMsg("","");
   try{
-    const{data,error}=kind==="in"?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password});
+    const{data,error}=kind==="in"?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
     if(error)throw error;
     if(data.session){$("#pass").value="";boot()}
     else authMsg("ok","Account created. Check your email to confirm your address, then sign in.");
-  }catch(e){authMsg("err",e.message||"Authentication failed.")}
+  }catch(e){
+    if(/not confirmed/i.test(e.message||"")){authMsg("err","Your email isn’t confirmed yet. Check your inbox, or resend the link.");$("#resendBtn").classList.remove("hide")}
+    else authMsg("err",e.message||"Authentication failed.");
+  }
   $("#loginBtn").disabled=$("#signupBtn").disabled=false;
 }
 $("#loginBtn").onclick=()=>doAuth("in");
 $("#signupBtn").onclick=()=>doAuth("up");
+$("#resendBtn").onclick=async()=>{
+  const email=$("#email").value.trim();
+  if(!email){authMsg("err","Enter your email above, then press Resend.");return}
+  $("#resendBtn").disabled=true;
+  try{
+    const{error}=await sb.auth.resend({type:"signup",email,options:{emailRedirectTo:location.origin+location.pathname}});
+    if(error)throw error;authMsg("ok","A new confirmation email is on its way. Use the newest link only.");
+  }catch(e){authMsg("err",e.message||"Could not resend the email.")}
+  $("#resendBtn").disabled=false;
+};
 ["#email","#pass"].forEach(x=>$(x).addEventListener("keydown",e=>{if(e.key==="Enter")doAuth("in")}));
 ["#email","#pass"].forEach(x=>$(x).addEventListener("input",()=>authMsg("","")));
 $("#signout").onclick=async()=>{try{await sb.auth.signOut()}catch(e){}showLogin()};
@@ -330,17 +375,18 @@ $("#startBtn").onclick=async()=>{
   try{
     const qs=await rpc("get_questions",{p_bank:$("#bankSel").value});
     if(!qs.length)throw new Error("This bank has no questions.");
-    begin(qs);
+    S.bank=$("#bankSel").value;begin(qs,false);
   }catch(e){toast("Could not load questions: "+(e.message||e))}
   b.disabled=false;b.textContent="Start session";
 };
-function begin(list){
+function begin(list,retry){
+  S.run=(S.run||0)+1;S.bmBusy=new Set();S.retry=!!retry;$("#saveNote").className="status hide";
   S.qs=list.slice();S.ans={};S.res={};S.bm=new Set();S.seen=new Set();S.pos=0;S.busy=false;S.ending=false;S.f="all";
   S.mode=$("input[name=mode]:checked").value;S.timer=$("input[name=timer]:checked").value;
   S.gTotal=Math.max(1,+$("#gMin").value||30)*60;S.gLeft=S.gTotal;S.pTotal=Math.max(5,+$("#pSec").value||90);S.pLeft=S.pTotal;
   $("#search").value="";applyFilter();show("quiz");
   clearInterval(S.tick);if(S.timer!=="none")S.tick=setInterval(onTick,1000);
-  render();
+  render();loadBookmarks();
 }
 const skipped=i=>S.seen.has(i)&&S.ans[i]==null;
 function applyFilter(keep){
@@ -397,9 +443,25 @@ function render(){
   $("#dots").innerHTML=S.view.map((qi,p)=>`<button class="dot ${S.ans[qi]!=null?"a":skipped(qi)?"s":""} ${p===S.pos?"c":""} ${S.bm.has(qi)?"b":""}" data-p="${p}" aria-label="Go to question ${p+1}">${qi+1}</button>`).join("");
 }
 $("#qbody").addEventListener("click",e=>{
-  if(e.target.closest("#bmBtn")){const i=curIdx();S.bm.has(i)?S.bm.delete(i):S.bm.add(i);if(S.f==="bm")applyFilter(i);render();return}
+  if(e.target.closest("#bmBtn")){flipBookmark(curIdx());return}
   const b=e.target.closest(".opt");if(b&&!b.disabled)choose(b.dataset.l);
 });
+function setBm(i,on){on?S.bm.add(i):S.bm.delete(i);if(S.f==="bm")applyFilter(i);render()}
+async function flipBookmark(i){
+  const q=S.qs[i];if(!q||S.bmBusy.has(q.id))return;
+  S.bmBusy.add(q.id);const want=!S.bm.has(i);setBm(i,want);
+  try{const r=await toggleBookmark(q.id);if(r.bookmarked!==want)setBm(i,r.bookmarked)}
+  catch(e){setBm(i,!want);toast("Could not update bookmark: "+(e.message||e))}
+  S.bmBusy.delete(q.id);
+}
+async function loadBookmarks(){
+  const run=S.run;
+  try{
+    const ids=await getBookmarkedIds();if(run!==S.run)return;
+    S.qs.forEach((q,i)=>{if(ids.has(q.id))S.bm.add(i)});
+    applyFilter(S.view[S.pos]);render();
+  }catch(e){toast("Could not load your bookmarks: "+(e.message||e))}
+}
 async function choose(l){
   const i=curIdx();if(i==null||S.busy)return;
   if(S.mode==="study"&&S.ans[i]!=null)return;
@@ -450,7 +512,51 @@ async function finish(timeUp){
     let v=0;const step=()=>{v=Math.min(pct,v+Math.max(1,Math.ceil(pct/30)));$("#pct").textContent=v+"%";if(v<pct)requestAnimationFrame(step)};step();
   },60);
   $("#retry").disabled=!(w+k);S.rv="all";drawReview();
+  S.sc={c,n};S.saved=false;saveResult();
 }
+/* ---------- My progress ---------- */
+const fd=(d,o)=>new Date(d).toLocaleDateString(undefined,o);
+const pctColor=v=>v>=70?"var(--okt)":v<50?"var(--badt)":"var(--warnt)";
+function chartSvg(rows){
+  const W=600,H=190,pl=34,pr=12,pt=12,pb=26,iw=W-pl-pr,ih=H-pt-pb;
+  const x=i=>pl+(rows.length===1?iw/2:i*iw/(rows.length-1)),y=v=>pt+ih*(1-v/100);
+  const grid=[0,50,100].map(v=>`<line class="g" x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl-6}" y="${y(v)+3.5}" text-anchor="end">${v}</text>`).join("");
+  const pts=rows.map((r,i)=>`${x(i).toFixed(1)},${y(r.percentage).toFixed(1)}`).join(" ");
+  const dots=rows.map((r,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(r.percentage).toFixed(1)}" r="4"><title>${esc(r.bank)}: ${r.percentage}% (${fd(r.completed_at,{day:"numeric",month:"short"})})</title></circle>`).join("");
+  const lbl=rows.map((r,i)=>`<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="middle">${esc(fd(r.completed_at,{day:"numeric",month:"short"}))}</text>`).join("");
+  return `<svg class="pc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Score trend for your last ${rows.length} sessions">${grid}<polyline class="ln" points="${pts}"/>${dots}${lbl}</svg>`;
+}
+function progressHtml(a){
+  if(!a.totalTests)return '<div class="empty">No saved sessions yet. Finish a full session and it will appear here.</div>';
+  const tile=(v,l)=>`<div class="tile"><b>${v}</b><span>${l}</span></div>`;
+  let h=`<div class="ptiles">${tile(a.totalTests,"Sessions")}${tile(a.totalQuestions,"Questions")}${tile(a.overallPercentage+"%","Overall")}${tile(a.streakDays,a.streakDays===1?"Day streak":"Day streak")}${tile(a.bookmarkCount,"Bookmarks")}</div>`;
+  if(a.trend){
+    const c=a.trend.change,k=c>0?"ok":c<0?"err":"",w=c>0?`up ${c} points`:c<0?`down ${Math.abs(c)} points`:"unchanged";
+    h+=`<div class="status ${k}" style="margin:0 0 18px"><span class="dot"></span><span>Your last 5 sessions average ${a.trend.recentAvg}%, ${w} on the 5 before.</span></div>`;
+  }
+  const rows=a.recent.slice().reverse();
+  h+=`<h2>Recent scores (%)</h2>${chartSvg(rows)}<h2>By question bank</h2>`;
+  h+=a.banks.map(b=>`<div class="brow"><div class="top"><span>${esc(b.bank)} <small>· ${b.attempts} session${b.attempts>1?"s":""}</small></span><span class="mono">${b.overallPercentage}%</span></div><div class="bar"><i style="width:${b.overallPercentage}%"></i></div><small style="color:var(--mute);font-size:.8rem">Best ${b.bestPercentage}% · Latest ${b.latestPercentage}% · ${b.totalCorrect}/${b.totalQuestions} correct</small></div>`).join("");
+  h+=`<h2 style="margin-top:24px">Recent sessions</h2>`+a.recent.map(r=>`<div class="prow"><span>${esc(r.bank)}<small>${esc(fd(r.completed_at,{day:"numeric",month:"short",year:"numeric"}))}</small></span><b>${r.score}/${r.total_questions} · <span style="color:${pctColor(r.percentage)}">${r.percentage}%</span></b></div>`).join("");
+  return h;
+}
+async function openProgress(){
+  if(!$("#quiz").classList.contains("hide")){toast("Finish your current session first.");return}
+  show("progress");const body=$("#progBody");body.innerHTML='<div class="empty">Loading your progress…</div>';
+  try{body.innerHTML=progressHtml(await getUserAnalytics())}
+  catch(e){body.innerHTML=`<div class="status err" style="margin:0"><span class="dot"></span><span>${esc(e.message||e)}</span></div>`}
+}
+$("#progBtn").onclick=openProgress;
+$("#progBack").onclick=()=>show("setup");
+
+async function saveResult(){
+  const note=$("#saveNote"),line=(k,t,extra)=>{note.className="status "+k;note.innerHTML=`<span class="dot"></span><span>${esc(t)}</span>${extra||""}`};
+  if(S.retry||S.saved){if(S.retry)note.className="status hide";return}
+  line("","Saving to your history…");
+  try{await saveTestPerformance(S.bank,S.sc.c,S.sc.n);S.saved=true;line("ok","Result saved to your history.")}
+  catch(e){line("err",e.message||"Could not save this result.",'<button class="chip" id="saveRetry" style="margin-left:auto">Try again</button>')}
+}
+$("#saveNote").addEventListener("click",e=>{if(e.target.id==="saveRetry")saveResult()});
 const status=i=>S.ans[i]==null?"k":S.res[i].correct?"c":"i";
 function drawReview(){
   const F=[["all","All"],["i","Incorrect"],["k","Skipped"],["c","Correct"],["bm","Bookmarked"]];
@@ -467,23 +573,11 @@ function drawReview(){
 }
 $("#chips").addEventListener("click",e=>{const c=e.target.closest(".chip");if(c){S.rv=c.dataset.f;drawReview()}});
 $("#again").onclick=()=>show("setup");
-$("#retry").onclick=()=>{const list=S.qs.filter((q,i)=>status(i)!=="c");if(list.length)begin(list)};
+$("#retry").onclick=()=>{const list=S.qs.filter((q,i)=>status(i)!=="c");if(list.length)begin(list,true)};
 
-boot();
-})();
-</script>
-  /* MET Practice by DBL: bookmarks, performance saving and analytics.
- *
- * Requires: a Supabase client named `supabase`, a signed-in user, and the
- * `bookmarks` and `user_performances` tables from the migration.
- * user_id is filled in by the database (default auth.uid()), so it is never sent.
- *
- * NOTE: if the supabase-js CDN script is loaded, `window.supabase` is the LIBRARY,
- * not a client. Create your client under another name, for example
- *   const supabase = window.supabase.createClient(URL, KEY)   // inside a module/IIFE
- * or just change the one line below to point at your client (e.g. `sb`).
- */
-const db = () => sb;
+/* ---------- Bookmarks, performance and analytics (met-data) ---------- */
+const db = () => sb; // the client created above
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Throws a readable Error for any Supabase error. */
@@ -676,6 +770,9 @@ async function getUserAnalytics() {
     bookmarkCount: bmRes.count || 0,
   };
 }
+
+boot();
+})();
 </script>
 </body>
 </html>
